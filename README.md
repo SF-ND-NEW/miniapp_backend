@@ -1,260 +1,135 @@
-# 点歌台后端（FastAPI + SQLite）
+# 校园点歌系统 · 后端服务 & 使用说明
 
-本项目是为学生会运动会点歌小程序设计的后端，支持小程序点歌、树莓派放歌与后台审核三端对接，使用 Python 的 FastAPI 框架与 SQLite 数据库实现。
-
----
-
-## 目录
-
-- [功能简介](#功能简介)
-- [数据库结构](#数据库结构)
-- [API 文档](#api-文档)
-  - [小程序 API](#小程序-api)
-  - [管理员后台 API](#管理员后台-api)
-  - [树莓派端 API](#树莓派端-api)
-- [快速启动](#快速启动)
-- [部署指南（DigitalOcean）](#部署指南digitalocean)
-- [安全建议](#安全建议)
-- [后续可拓展点](#后续可拓展点)
+本项目为校园点歌系统的 FastAPI 后端，实现了微信小程序端的登录、绑定、搜索、点歌、管理员审核、歌曲播放等全流程，集成网易云音乐播放直链获取能力，适合部署至树莓派等设备实现自动播放。
 
 ---
 
-## 功能简介
+## 目录结构
 
-- **学生微信小程序端**：绑定学号，点歌，查询点歌历史
-- **管理员后台**：登录，歌曲请求审核，查询历史
-- **树莓派放歌端**：拉取待播放歌曲，标记已播放
-
----
-
-## 数据库结构
-
-### 1. User（用户表）
-
-| 字段名           | 类型       | 说明         |
-|------------------|----------|--------------|
-| id               | INTEGER  | 主键，自增   |
-| wechat_openid    | TEXT     | 微信openid，唯一|
-| student_id       | INTEGER  | 学号         |
-| name             | TEXT     | 姓名         |
-| bind_time        | DATETIME | 绑定时间     |
-
-### 2. SongRequest（点歌请求表）
-
-| 字段名           | 类型      | 说明         |
-|------------------|-----------|--------------|
-| id               | INTEGER   | 主键，自增   |
-| user_id          | INTEGER   | 外键，用户ID |
-| song_id          | INTEGER   | 歌曲ID（整数）|
-| status           | TEXT      | 状态：`pending`（待审核），`approved`（通过），`rejected`（驳回），`played`（已播放）|
-| request_time     | DATETIME  | 请求时间     |
-| review_time      | DATETIME  | 审核时间     |
-| admin_id         | INTEGER   | 外键，管理员ID（可为空）|
-
-### 3. Admin（管理员表）
-
-| 字段名           | 类型      | 说明         |
-|------------------|-----------|--------------|
-| id               | INTEGER   | 主键，自增   |
-| username         | TEXT      | 用户名，唯一 |
-| password_hash    | TEXT      | 密码哈希     |
+- `main.py` —— 主后端服务，所有API接口实现
+- `cookie.txt` —— 网易云音乐网页版cookie（用于获取播放直链，需手动获取）
+- `database.db` —— SQLite数据库
+- `requirements.txt` —— 依赖包列表
 
 ---
 
-## API 文档
+## 主要功能
 
-所有接口均为 RESTful 风格，采用 JSON 作为传递格式。
+- **微信小程序端相关**
+  - `/api/wechat/login` 微信登录，返回小程序JWT
+  - `/api/wechat/bind` 绑定学号与微信号
+  - `/api/wechat/isbound` 查询是否已绑定
+  - `/api/search` 网易云歌曲搜索
+  - `/api/wechat/song/request` 发起点歌请求
 
-### 小程序 API
+- **管理员后台**
+  - `/api/admin/login` 管理员登录
+  - `/api/admin/song/list` 查询指定状态的点歌请求（如：待审核）
+  - `/api/admin/song/review` 审核点歌（通过/驳回）
 
-前缀：`/api/wechat`
+- **播放与播放器**
+  - `/api/player/queue` 获取待播放歌曲队列
+  - `/api/player/played` 标记某个点歌已播放
 
-#### 1. 绑定微信和学号
-
-- **POST** `/api/wechat/bind`
-- **Body:**
-  ```json
-  {
-    "wechat_openid": "openid_xxx",
-    "student_id": "20250001",
-    "name": "张三"
-  }
-  ```
-- **返回:**
-  ```json
-  {
-    "success": true,
-    "msg": "绑定成功"
-  }
-  ```
-
-#### 2. 点歌请求
-
-- **POST** `/api/wechat/song/request`
-- **Body:**
-  ```json
-  {
-    "wechat_openid": "openid_xxx",
-    "song_id": 12345
-  }
-  ```
-- **返回:**
-  ```json
-  {
-    "success": true,
-    "msg": "请求成功，等待审核"
-  }
-  ```
-
-#### 3. 查询点歌历史
-
-- **GET** `/api/wechat/song/history?wechat_openid=openid_xxx`
-- **返回:**
-  ```json
-  {
-    "history": [
-      {
-        "song_request_id": 1,
-        "song_id": 12345,
-        "status": "approved",
-        "request_time": "2025-05-16 15:00"
-      }
-    ]
-  }
-  ```
+- **网易云音乐直链**
+  - `/api/geturl?id=xxx` 获取指定网易云歌曲ID的播放直链（需配合有效cookie.txt）
 
 ---
 
-### 管理员后台 API
+## 快速开始
 
-前缀：`/api/admin`
+### 1. 安装依赖
 
-#### 1. 管理员登录
+```bash
+pip install -r requirements.txt
+# 或手动安装
+pip install fastapi uvicorn pydantic python-dotenv werkzeug cryptography requests
+```
 
-- **POST** `/api/admin/login`
-- **Body:**
-  ```json
-  {
-    "username": "admin",
-    "password": "yourpassword"
-  }
+### 2. 准备数据库
+
+首次运行时会自动创建表并初始化测试用户（学号：271837，姓名：郑光朔）和管理员（用户名/密码：admin）。
+
+### 3. 获取网易云 cookie
+
+- 登录网页版网易云音乐，F12 控制台获取你的 cookie，复制粘贴到 `cookie.txt` 文件（同 main.py 同级目录）。
+- 示例内容（使用你自己的）：
   ```
-- **返回:**
-  ```json
-  {
-    "token": "jwt_token_xxx"
-  }
-  ```
-
-#### 2. 查询点歌请求
-
-- **GET** `/api/admin/song/list?status=pending`
-- **Header:** `Authorization: Bearer <token>`
-- **返回:**
-  ```json
-  {
-    "requests": [
-      {
-        "song_request_id": 1,
-        "song_id": 12345,
-        "user": {"student_id": "20250001", "name": "张三"},
-        "status": "pending",
-        "request_time": "2025-05-16 15:00"
-      }
-    ]
-  }
+  MUSIC_U=xxx; __csrf=xxx; ...  # 一行
   ```
 
-#### 3. 审核/更改歌曲状态
+### 4. 配置环境变量
 
-- **POST** `/api/admin/song/review`
-- **Header:** `Authorization: Bearer <token>`
-- **Body:**
-  ```json
-  {
-    "song_request_id": 1,
-    "status": "approved"
-  }
-  ```
-- **返回:**
-  ```json
-  {
-    "success": true,
-    "msg": "审核成功"
-  }
-  ```
+在项目目录下新建 `.env` 文件（用于微信小程序登录）：
+
+```
+JWT_SECRET=your_jwt_secret_key
+WECHAT_APPID=your_wx_appid
+WECHAT_SECRET=your_wx_secret
+```
+
+### 5. 启动后端服务
+
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 6. 主要API速查
+
+- **小程序端**
+  - 登录：`POST /api/wechat/login`  body: `{ code }`
+  - 绑定：`POST /api/wechat/bind`  headers: `Authorization: Bearer <token>`
+  - 搜索：`GET /api/search?query=xxx`
+  - 点歌：`POST /api/wechat/song/request`  headers: `Authorization: Bearer <token>`
+
+- **管理员**
+  - 登录：`POST /api/admin/login`  body: `{ username, password }`
+  - 审核列表：`GET /api/admin/song/list?status=pending`  headers: `Authorization: Bearer <token>`
+  - 审核操作：`POST /api/admin/song/review`  headers: `Authorization: Bearer <token>`
+
+- **播放器**
+  - 获取队列：`GET /api/player/queue`
+  - 标记已播：`POST /api/player/played`  body: `{ request_id }`
+  - 获取直链：`GET /api/geturl?id=xxx`  返回网易云可播放URL
 
 ---
 
-### 树莓派端 API
+## 树莓派/本地播放器推荐流程
 
-前缀：`/api/pi`
-
-#### 1. 获取下一首可播放歌曲
-
-- **GET** `/api/pi/song/next`
-- **返回:**
-  ```json
-  {
-    "song_request_id": 1,
-    "song_id": 12345
-  }
-  ```
-
-#### 2. 标记已播放
-
-- **POST** `/api/pi/song/played`
-- **Body:**
-  ```json
-  {
-    "song_request_id": 1
-  }
-  ```
-- **返回:**
-  ```json
-  {
-    "success": true,
-    "msg": "已标记为已播放"
-  }
-  ```
+1. 定时轮询 `/api/player/queue` 获取下一个 approved 歌曲
+2. 调用 `/api/geturl?id=xxx` 获取播放地址
+3. 用 `python-vlc`、`mpg123` 等库播放（支持流式）
+4. 播放完成后调用 `/api/player/played` 标记已播
 
 ---
 
-## 快速启动
+## 常见问题
 
-1. **克隆代码并安装依赖**
-    ```bash
-    git clone https://github.com/yourusername/song-request-backend.git
-    cd song-request-backend
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
-    ```
+### Q: 网易云直链为何获取失败？
+- 检查 cookie.txt 是否最新、有效（避免登录失效）
+- 网易云部分歌曲版权原因可能无外链
 
-2. **初始化数据库**
-    - 首次运行时，FastAPI 项目会自动创建 SQLite 数据库和表。
-    - 或运行自带的初始化脚本（如有）。
+### Q: 数据库如何自定义初始化？
+- 参见 `main.py` 末尾建表和测试数据部分，自行增删
 
-3. **启动服务**
-    ```bash
-    uvicorn main:app --host 0.0.0.0 --port 8000
-    ```
-
-4. **访问接口**
-    - 小程序/前端/树莓派通过 RESTful API 调用后端
-    - 管理员可用 Postman 或前端页面调用管理端接口
+### Q: 小程序端如何对接？
+- 所有接口均为标准 RESTful，参考微信小程序 fetch/request 用法
 
 ---
 
-## 安全
+## 安全提示
 
-- 管理员密码需加密存储（建议 bcrypt）
-- 所有管理端接口需强认证（JWT/Session）
-- 避免明文存储敏感信息
-- 生产环境请定期备份 SQLite 数据库
-- 控制 API 访问频率防刷
+- 管理员接口建议生产环境加更严格鉴权
+- 切勿泄露 cookie.txt、.env 等敏感信息至公有仓库
 
 ---
 
+## 贡献
 
-如需详细开发文档、接口示例代码，或有定制化需求请联系开发者。
+如有建议、Bug或功能需求，欢迎提Issue或PR。
+
+---
+
+## License
+
+MIT

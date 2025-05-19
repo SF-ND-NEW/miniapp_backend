@@ -1,20 +1,38 @@
 import sqlite3
 
-from fastapi import FastAPI, HTTPException, Header, Depends, Query
+from fastapi import FastAPI, HTTPException, Header, Depends, Query, Body
 from dotenv import load_dotenv
-import os
-import requests
 from pydantic import BaseModel
 import jwt
 import datetime
-
+from werkzeug.security import check_password_hash
+from fastapi.middleware.cors import CORSMiddleware
+import os
+import json
+import urllib.parse
+from hashlib import md5
+from random import randrange
+import requests
+from fastapi import APIRouter, Query
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 app = FastAPI()
 load_dotenv()
 JWT_SECRET = os.getenv("JWT_SECRET")
 WECHAT_APPID = os.getenv("WECHAT_APPID")
 WECHAT_SECRET = os.getenv("WECHAT_SECRET")
-
+origins = [
+    'http://localhost:5173',
+    'http://localhost:8000'
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def create_jwt_token(openid: str):
     """
@@ -196,3 +214,223 @@ def song_request(data:SongRequest, openid: str = Depends(get_openid)):
     conn.commit()
     conn.close()
     return {"success": True, "msg": "点歌成功，等待审核"}
+
+
+class AdminLoginRequest(BaseModel):
+    username: str
+    password: str
+
+def get_admin_by_username(username):
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, password_hash FROM admin WHERE username=?", (username,))
+    row = cursor.fetchone()
+    conn.close()
+    return row
+
+@app.post("/api/admin/login")
+def admin_login(data: AdminLoginRequest):
+    row = get_admin_by_username(data.username)
+    if not row:
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+    admin_id, password_hash = row
+    if not check_password_hash(password_hash, data.password):
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+    payload = {
+        "admin_id": admin_id,
+        "username": data.username,
+        "exp": datetime.datetime.now() + datetime.timedelta(hours=8)
+    }
+    token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+    if isinstance(token, bytes):
+        token = token.decode('utf-8')
+    return {"token": token, "username": data.username}
+
+def get_admin_id(authorization: str = Header(...)):
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="认证信息缺失或格式错误")
+    token = authorization.split(" ")[1]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except Exception:
+        raise HTTPException(status_code=401, detail="token无效或已过期")
+    return payload["admin_id"]
+
+@app.get("/api/admin/song/list")
+def admin_song_list(status: str = Query(...), admin_id: int = Depends(get_admin_id)):
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT sr.id, sr.song_id, sr.status, sr.request_time, sr.review_time, sr.review_reason, 
+               u.student_id, u.name, u.wechat_openid
+          FROM song_request sr
+          JOIN user u ON sr.user_id = u.id
+         WHERE sr.status = ?
+         ORDER BY sr.request_time ASC
+    ''', (status,))
+    rows = cursor.fetchall()
+    conn.close()
+    song_list = []
+    for row in rows:
+        song_list.append({
+            "id": row[0],
+            "song_id": row[1],
+            "status": row[2],
+            "request_time": row[3],
+            "review_time": row[4],
+            "review_reason": row[5],
+            "student_id": row[6],
+            "name": row[7],
+            "wechat_openid": row[8],
+        })
+    return {"songs": song_list}
+
+class SongReviewRequest(BaseModel):
+    song_request_id: int
+    status: str  # 'approved' or 'rejected'
+    reason: str = ""
+
+@app.post("/api/admin/song/review")
+def admin_song_review(data: SongReviewRequest, admin_id: int = Depends(get_admin_id)):
+    if data.status not in ("approved", "rejected"):
+        raise HTTPException(status_code=400, detail="status只能为approved或rejected")
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT status FROM song_request WHERE id=?", (data.song_request_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="点歌记录不存在")
+    if row[0] != "pending":
+        conn.close()
+        raise HTTPException(status_code=400, detail="该点歌已审核过")
+    cursor.execute('''
+        UPDATE song_request SET status=?, review_time=?, review_reason=?, reviewer_id=?
+        WHERE id=?
+    ''', (data.status, datetime.datetime.now(), data.reason, admin_id, data.song_request_id))
+    conn.commit()
+    conn.close()
+    return {"success": True, "msg": "审核成功"}
+
+
+@app.get("/api/player/queue")
+def api_player_queue():
+    # 返回状态为“approved”的未播放歌曲，按时间排序
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, song_id FROM song_request WHERE status = 'approved' ORDER BY request_time ASC"
+    )
+    songs = [{"request_id": row[0], "song_id": row[1]} for row in cursor.fetchall()]
+    conn.close()
+    return {"queue": songs}
+
+class PlayerPlayedRequest(BaseModel):
+    request_id: int
+@app.post("/api/player/played")
+def api_player_played(data: PlayerPlayedRequest):
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE song_request SET status='played', review_time=? WHERE id=?",
+        (datetime.datetime.now(), data.request_id)
+    )
+    conn.commit()
+    conn.close()
+    return {"success": True}
+
+
+# --- 工具函数 ---
+def HexDigest(data):
+    return "".join([hex(d)[2:].zfill(2) for d in data])
+
+
+def HashDigest(text):
+    return md5(text.encode("utf-8")).digest()
+
+
+def HashHexDigest(text):
+    return HexDigest(HashDigest(text))
+
+
+def parse_cookie(text: str):
+    cookie_ = [item.strip().split('=', 1) for item in text.strip().split(';') if item]
+    cookie_ = {k.strip(): v.strip() for k, v in cookie_}
+    return cookie_
+
+
+def read_cookie():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    cookie_file = os.path.join(script_dir, 'cookie.txt')
+    with open(cookie_file, 'r') as f:
+        cookie_contents = f.read()
+    return cookie_contents
+
+
+def post(url, params, cookie):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/2.10.2.200154',
+        'Referer': '',
+    }
+    cookies = {
+        "os": "pc",
+        "appver": "",
+        "osver": "",
+        "deviceId": "pyncm!"
+    }
+    cookies.update(cookie)
+    response = requests.post(url, headers=headers, cookies=cookies, data={"params": params})
+    return response.text
+
+
+def url_v1(id, level, cookies):
+    url = "https://interface3.music.163.com/eapi/song/enhance/player/url/v1"
+    AES_KEY = b"e82ckenh8dichen8"
+    config = {
+        "os": "pc",
+        "appver": "",
+        "osver": "",
+        "deviceId": "pyncm!",
+        "requestId": str(randrange(20000000, 30000000))
+    }
+
+    payload = {
+        'ids': [id],
+        'level': level,
+        'encodeType': 'flac',
+        'header': json.dumps(config),
+    }
+
+    if level == 'sky':
+        payload['immerseType'] = 'c51'
+
+    url2 = urllib.parse.urlparse(url).path.replace("/eapi/", "/api/")
+    digest = HashHexDigest(f"nobody{url2}use{json.dumps(payload)}md5forencrypt")
+    params = f"{url2}-36cd479b6b5-{json.dumps(payload)}-36cd479b6b5-{digest}"
+    padder = padding.PKCS7(algorithms.AES(AES_KEY).block_size).padder()
+    padded_data = padder.update(params.encode()) + padder.finalize()
+    cipher = Cipher(algorithms.AES(AES_KEY), modes.ECB())
+    encryptor = cipher.encryptor()
+    enc = encryptor.update(padded_data) + encryptor.finalize()
+    params = HexDigest(enc)
+    response = post(url, params, cookies)
+    return json.loads(response)
+
+
+def get_res(id):
+    cookies = parse_cookie(read_cookie())
+    res = url_v1(id, "standard", cookies)
+    return res
+
+
+@app.get("/api/geturl")
+def api_geturl(id: str = Query(..., description="网易云音乐歌曲ID")):
+    """
+    获取网易云音乐播放直链
+    """
+    response = get_res(id)
+    res = {
+        "code": response.get("code", -1),
+        "data": response["data"][0] if "data" in response and len(response["data"]) > 0 else {}
+    }
+    return res
