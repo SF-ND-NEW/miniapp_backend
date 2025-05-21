@@ -23,8 +23,7 @@ JWT_SECRET = os.getenv("JWT_SECRET")
 WECHAT_APPID = os.getenv("WECHAT_APPID")
 WECHAT_SECRET = os.getenv("WECHAT_SECRET")
 origins = [
-    'http://localhost:5173',
-    'http://localhost:8000'
+    'http://localhost:5173'
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -48,7 +47,12 @@ def create_jwt_token(openid: str):
     return token
 
 
-def get_openid(authorization: str = Header(...)):
+def get_openid(authorization: str = Header(...))->str:
+    """
+    获取openid
+    :param authorization: 传入的头部，包含JWT
+    :return: 微信openid解密后的值
+    """
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="认证信息缺失或格式错误")
     token = authorization.split(" ")[1]
@@ -121,6 +125,11 @@ def wechat_bind(data: BindRequest, openid: str = Depends(get_openid)):
 
 @app.get("/api/wechat/isbound")
 def is_bound(openid: str = Depends(get_openid)):
+    """
+    检查微信账号是否已绑定
+    :param openid: 头部传入JWT
+    :return: 是否绑定
+    """
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
     cursor.execute("SELECT id FROM user WHERE wechat_openid=?", (openid,))
@@ -340,7 +349,6 @@ def api_player_played(data: PlayerPlayedRequest):
     return {"success": True}
 
 
-# --- 工具函数 ---
 def HexDigest(data):
     return "".join([hex(d)[2:].zfill(2) for d in data])
 

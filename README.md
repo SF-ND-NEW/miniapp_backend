@@ -48,14 +48,14 @@ pip install fastapi uvicorn pydantic python-dotenv werkzeug cryptography request
 
 ### 2. 准备数据库
 
-首次运行时会自动创建表并初始化测试用户（学号：271837，姓名：郑光朔）和管理员（用户名/密码：admin）。
+运行`database.py`时会自动创建表并初始化测试用户（学号：114514，姓名User）和管理员（用户名/密码：admin）。
 
 ### 3. 获取网易云 cookie
 
 - 登录网页版网易云音乐，F12 控制台获取你的 cookie，复制粘贴到 `cookie.txt` 文件（同 main.py 同级目录）。
 - 示例内容（使用你自己的）：
   ```
-  MUSIC_U=xxx; __csrf=xxx; ...  # 一行
+  MUSIC_U=xxx; os=pc; ...  # 一行
   ```
 
 ### 4. 配置环境变量
@@ -110,7 +110,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 - 网易云部分歌曲版权原因可能无外链
 
 ### Q: 数据库如何自定义初始化？
-- 参见 `main.py` 末尾建表和测试数据部分，自行增删
+- 参见 `database.py` 末尾建表和测试数据部分，自行增删
 
 ### Q: 小程序端如何对接？
 - 所有接口均为标准 RESTful，参考微信小程序 fetch/request 用法
@@ -119,7 +119,6 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ## 安全提示
 
-- 管理员接口建议生产环境加更严格鉴权
 - 切勿泄露 cookie.txt、.env 等敏感信息至公有仓库
 
 ---

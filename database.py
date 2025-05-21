@@ -68,7 +68,7 @@ cursor.execute('''
         FOREIGN KEY(user_id) REFERENCES user(id)
     )
 ''')
-# test：初始化测试数据 郑光朔 271837
+# test：初始化测试数据 User 114514
 cursor.execute('''
     SELECT wechat_openid FROM user WHERE student_id=271837
 ''')
@@ -76,12 +76,12 @@ row = cursor.fetchone()
 if not row:
     cursor.execute('''
         INSERT INTO user (wechat_openid, student_id, name)
-        VALUES (null, 271837, '郑光朔')
+        VALUES (null, 114514, 'User')
     ''')
     conn.commit()
 else:
     cursor.execute('''
-        UPDATE user SET wechat_openid=null WHERE student_id=271837
+        UPDATE user SET wechat_openid=null WHERE student_id=114514
     ''')
     conn.commit()
 # test: 初始化测试数据 admin admin
