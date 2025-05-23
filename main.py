@@ -442,3 +442,8 @@ def api_geturl(id: str = Query(..., description="网易云音乐歌曲ID")):
         "data": response["data"][0] if "data" in response and len(response["data"]) > 0 else {}
     }
     return res
+
+
+if __name__=='__main__':
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
