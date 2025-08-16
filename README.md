@@ -1,119 +1,477 @@
-# 校园点歌系统 · 后端使用说明
+# 校园点歌系统后端
 
-本项目为校园点歌系统的 FastAPI 后端，实现了微信小程序端的登录、绑定、搜索、点歌、管理员审核、歌曲播放等全流程，集成网易云音乐播放直链获取能力，适合部署至树莓派等设备实现自动播放。
+本项目是校园点歌系统的FastAPI后端服务，实现了微信小程序登录、用户绑定、歌曲搜索、点歌、管理员审核、歌曲播放等全流程功能，集成网易云音乐播放直链获取。
 
----
+## 技术栈
 
-## 目录结构
+- **Web框架**: FastAPI
+- **ORM**: SQLAlchemy
+- **数据库**: PostgreSQL
+- **身份验证**: JWT
+- **API集成**: 网易云音乐API
 
-- `main.py` —— 主后端服务，所有API接口实现
-- `cookie.txt` —— 网易云音乐网页版cookie（用于获取播放直链，需手动获取）
-- `database.db` —— SQLite数据库
-- `requirements.txt` —— 依赖包列表
+## 项目结构
 
----
+```
+ourapp_back/
+├── app/                        # 应用主目录
+│   ├── api/                    # API路由模块
+│   │   ├── admin.py           # 管理员相关API
+│   │   ├── player.py          # 播放器相关API
+│   │   ├── songs.py           # 歌曲搜索API
+│   │   └── wechat.py          # 微信小程序相关API
+│   ├── core/                   # 核心配置
+│   │   ├── config.py          # 应用配置
+│   │   └── security.py        # 安全相关工具
+│   ├── db/                     # 数据库相关
+│   │   ├── models/            # 数据模型
+│   │   ├── repositories/      # 数据访问层
+│   │   └── session.py         # 数据库会话
+│   ├── schemas/               # 请求/响应模式
+│   ├── services/              # 业务逻辑服务
+│   └── main.py                # 应用入口
+├── cookie.txt                  # 网易云音乐cookie
+├── database.db                 # SQLite数据库文件
+├── requirements.txt            # 依赖包列表
+├── migrate.py                  # 数据库迁移脚本
+└── run.py                      # 启动脚本
+```
 
-## 主要功能
+## 功能模块
 
-- **微信小程序端相关**
-  - `/api/wechat/login` 微信登录，返回小程序JWT
-  - `/api/wechat/bind` 绑定学号与微信号
-  - `/api/wechat/isbound` 查询是否已绑定
-  - `/api/search` 网易云歌曲搜索
-  - `/api/wechat/song/request` 发起点歌请求
+### 微信小程序模块
+- **登录**: 通过微信小程序code换取openid并生成JWT令牌
+- **绑定**: 将微信用户与学生信息绑定
+- **刷新令牌**: 支持访问令牌过期后使用刷新令牌获取新令牌
+- **点歌**: 用户提交点歌请求
 
-- **管理员后台**
-  - `/api/admin/login` 管理员登录
-  - `/api/admin/song/list` 查询指定状态的点歌请求（如：待审核）
-  - `/api/admin/song/review` 审核点歌（通过/驳回）
+### 管理员模块
+- **登录**: 管理员账号密码登录
+- **歌曲审核**: 查看和审核点歌请求
+- **数据管理**: 管理用户和歌曲数据
 
-- **播放与播放器**
-  - `/api/player/queue` 获取待播放歌曲队列
-  - `/api/player/played` 标记某个点歌已播放
+### 播放器模块
+- **队列管理**: 获取待播放歌曲队列
+- **状态更新**: 标记歌曲播放状态
 
-- **网易云音乐直链**
-  - `/api/geturl?id=xxx` 获取指定网易云歌曲ID的播放直链（需配合有效cookie.txt）
-
----
+### 音乐服务
+- **歌曲搜索**: 搜索网易云音乐歌曲
+- **获取直链**: 获取歌曲播放地址
+- **获取歌词**: 获取歌曲歌词
 
 ## 快速开始
 
-### 1. 安装依赖
+### 1. 环境准备
+
+确保已安装Python 3.8+和pip。
+
+### 2. 安装依赖
 
 ```bash
 pip install -r requirements.txt
-# 或手动安装
-pip install fastapi uvicorn pydantic python-dotenv werkzeug cryptography requests
 ```
 
-### 2. 准备数据库
+### 3. 配置环境变量
 
-运行`database.py`时会自动创建表并初始化测试用户（学号：114514，姓名User）和管理员（用户名/密码：admin）。
+在项目根目录创建`.env`文件：
 
-### 3. 获取网易云 cookie
+``` dotenv
+# JWT配置
+JWT_SECRET=your_secure_jwt_secret_key
 
-- 登录网页版网易云音乐，F12 控制台获取你的 cookie，复制粘贴到 `cookie.txt` 文件（同 main.py 同级目录）。
-- 示例内容（使用你自己的）：
-  ```
-  MUSIC_U=xxx; os=pc; ...  # 一行
-  ```
+# 微信小程序配置
+WECHAT_APPID=your_wechat_appid
+WECHAT_SECRET=your_wechat_secret
 
-### 4. 配置环境变量
-
-在项目目录下新建 `.env` 文件（用于微信小程序登录）：
-
-```
-JWT_SECRET=your_jwt_secret_key
-WECHAT_APPID=your_wx_appid
-WECHAT_SECRET=your_wx_secret
+# 数据库配置（如使用PostgreSQL）
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=yourpassword
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=your-database-name
 ```
 
-### 5. 启动后端服务
+### 4. 初始化数据库
+
+使用以下命令初始化数据库：
 
 ```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+# 导入初始数据
+python migrate.py
 ```
 
-### 6. 主要API速查
+默认管理员账号：
+- 用户名: su
+- 密码: XxshSU0081
 
-- **小程序端**
-  - 登录：`POST /api/wechat/login`  body: `{ code }`
-  - 绑定：`POST /api/wechat/bind`  headers: `Authorization: Bearer <token>`
-  - 搜索：`GET /api/search?query=xxx`
-  - 点歌：`POST /api/wechat/song/request`  headers: `Authorization: Bearer <token>`
+### 5. 启动服务
 
-- **管理员**
-  - 登录：`POST /api/admin/login`  body: `{ username, password }`
-  - 审核列表：`GET /api/admin/song/list?status=pending`  headers: `Authorization: Bearer <token>`
-  - 审核操作：`POST /api/admin/song/review`  headers: `Authorization: Bearer <token>`
+```bash
+# 使用run.py启动
+python run.py
 
-- **播放器**
-  - 获取队列：`GET /api/player/queue`
-  - 标记已播：`POST /api/player/played`  body: `{ request_id }`
-  - 获取直链：`GET /api/geturl?id=xxx`  返回网易云可播放URL
+# 或使用uvicorn直接启动
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+服务启动后，可访问 http://localhost:8000/docs 查看API文档。
+
+## API接口说明
+
+## 目录
+
+- [微信小程序相关接口](#微信小程序相关接口)
+- [管理员接口](#管理员接口)
+- [播放器接口](#播放器接口)
+- [歌曲搜索与数据获取接口](#歌曲搜索与数据获取接口)
+
+## 微信小程序相关接口
+
+### 微信登录
+
+**请求**:
+- 方法: `POST`
+- 路径: `/api/wechat/login`
+- 内容类型: `application/json`
+
+**请求体**:
+```json
+{
+  "code": "string"  // 微信小程序登录返回的code
+}
+```
+
+**响应**:
+```json
+{
+  "access_token": "string",
+  "refresh_token": "string",
+  "token_type": "bearer"
+}
+```
+
+**描述**: 使用微信小程序获取的code进行登录，返回JWT访问令牌和刷新令牌。
 
 ---
 
-## 树莓派/本地播放器推荐流程
+### 微信账号绑定
 
-1. 定时轮询 `/api/player/queue` 获取下一个 approved 歌曲
-2. 调用 `/api/geturl?id=xxx` 获取播放地址
-3. 用 `python-vlc`、`mpg123` 等库播放（支持流式）
-4. 播放完成后调用 `/api/player/played` 标记已播
+**请求**:
+- 方法: `POST`
+- 路径: `/api/wechat/bind`
+- 内容类型: `application/json`
+- 授权: Bearer Token
+
+**请求体**:
+```json
+{
+  "student_id": "string",  // 学生ID
+  "name": "string"         // 学生姓名
+}
+```
+
+**响应**:
+```json
+{
+  "success": true,
+  "msg": "绑定成功"
+}
+```
+
+**描述**: 将微信账号与学生信息绑定。学生ID和姓名必须正确匹配，且一个学生ID只能绑定一个微信账号。
 
 ---
-## 安全提示
 
-- 切勿泄露 .env 等敏感信息至公有仓库
+### 刷新令牌
+
+**请求**:
+- 方法: `POST`
+- 路径: `/api/wechat/refresh`
+- 内容类型: `application/json`
+
+**请求体**:
+```json
+{
+  "refresh_token": "string"  // 刷新令牌
+}
+```
+
+**响应**:
+```json
+{
+  "access_token": "string",
+  "refresh_token": "string",
+  "token_type": "bearer"
+}
+```
+
+**描述**: 使用刷新令牌获取新的访问令牌和刷新令牌。
 
 ---
 
-## 贡献
+### 检查是否已绑定
 
-如有建议、Bug或功能需求，欢迎提Issue或PR。
+**请求**:
+- 方法: `GET`
+- 路径: `/api/wechat/isbound`
+- 授权: Bearer Token
+
+**响应**:
+```json
+{
+  "is_bound": true  // 或 false
+}
+```
+
+**描述**: 检查当前微信账号是否已经绑定到学生账号。
 
 ---
 
-## License
+### 点歌请求
 
-MIT
+**请求**:
+- 方法: `POST`
+- 路径: `/api/wechat/song/request`
+- 内容类型: `application/json`
+- 授权: Bearer Token
+
+**请求体**:
+```json
+{
+  "song_id": "string"  // 网易云音乐歌曲ID
+}
+```
+
+**响应**:
+```json
+{
+  "success": true,
+  "msg": "点歌成功，等待审核"
+}
+```
+
+**描述**: 提交点歌请求。系统有以下限制：
+- 普通用户在30分钟内只能点一次歌
+- 不能重复点同一首歌
+- 普通用户最多有3首未审核/未播放的歌曲
+
+## 管理员接口
+
+### 管理员登录
+
+**请求**:
+- 方法: `POST`
+- 路径: `/api/admin/login`
+- 内容类型: `application/json`
+
+**请求体**:
+```json
+{
+  "username": "string",
+  "password": "string"
+}
+```
+
+**响应**:
+```json
+{
+  "access_token": "string",
+  "token_type": "bearer"
+}
+```
+
+**描述**: 管理员登录，返回JWT访问令牌。
+
+---
+
+### 获取歌曲请求列表
+
+**请求**:
+- 方法: `GET`
+- 路径: `/api/admin/song/list`
+- 参数: `status` - 歌曲状态，如 "pending"、"approved"、"rejected"、"played"
+- 授权: Bearer Token (管理员)
+
+**响应**:
+```json
+{
+  "songs": [
+    {
+      "id": "integer",
+      "song_id": "string",
+      "song_name": "string",
+      "artist": "string",
+      "requester_name": "string",
+      "requester_id": "string",
+      "status": "string",
+      "request_time": "string",
+      "review_time": "string",
+      "reviewer_name": "string",
+      "reason": "string"
+    }
+  ]
+}
+```
+
+**描述**: 获取指定状态的歌曲请求列表。
+
+---
+
+### 审核歌曲请求
+
+**请求**:
+- 方法: `POST`
+- 路径: `/api/admin/song/review`
+- 内容类型: `application/json`
+- 授权: Bearer Token (管理员)
+
+**请求体**:
+```json
+{
+  "song_request_id": "integer",  // 歌曲请求ID
+  "status": "string",            // "approved" 或 "rejected"
+  "reason": "string"             // 拒绝理由，可选
+}
+```
+
+**响应**:
+```json
+{
+  "success": true,
+  "msg": "审核成功"
+}
+```
+
+**描述**: 管理员审核歌曲请求，可以批准或拒绝。只能审核状态为"pending"的请求。
+
+## 播放器接口
+
+### 获取播放队列
+
+**请求**:
+- 方法: `GET`
+- 路径: `/api/player/queue`
+
+**响应**:
+```json
+{
+  "queue": [
+    {
+      "id": "integer",
+      "song_id": "string",
+      "song_name": "string",
+      "artist": "string",
+      "requester_name": "string",
+      "requester_id": "string",
+      "status": "approved",
+      "request_time": "string",
+      "review_time": "string",
+      "reviewer_name": "string"
+    }
+  ]
+}
+```
+
+**描述**: 获取已审核批准但尚未播放的歌曲队列。
+
+---
+
+### 标记歌曲已播放
+
+**请求**:
+- 方法: `POST`
+- 路径: `/api/player/played`
+- 内容类型: `application/json`
+
+**请求体**:
+```json
+{
+  "request_id": "integer"  // 歌曲请求ID
+}
+```
+
+**响应**:
+```json
+{
+  "success": true
+}
+```
+
+**描述**: 将歌曲标记为已播放状态。
+
+## 歌曲搜索与数据获取接口
+
+### 搜索歌曲
+
+**请求**:
+- 方法: `GET`
+- 路径: `/api/search`
+- 参数:
+  - `query`: 搜索关键词（必填）
+  - `source`: 音乐源（可选）
+  - `count`: 返回结果数量，默认30
+  - `page`: 页码，默认1
+
+**响应**:
+```json
+{
+  "songs": [
+    {
+      "id": "string",
+      "name": "string",
+      "artist": "string",
+      "album": "string",
+      "pic_url": "string",
+      "source": "string"
+    }
+  ]
+}
+```
+
+**描述**: 通过GDstudio API搜索歌曲。
+
+---
+
+### 获取歌曲播放链接
+
+**请求**:
+- 方法: `GET`
+- 路径: `/api/geturl`
+- 参数:
+  - `id`: 歌曲ID（必填）
+  - `source`: 音乐源（可选）
+  - `br`: 比特率（可选）
+
+**响应**:
+```json
+{
+  "url": "string",
+  "br": "integer",
+  "size": "integer",
+  "md5": "string",
+  "type": "string"
+}
+```
+
+**描述**: 获取指定歌曲的播放直链。
+
+---
+
+### 获取歌词
+
+**请求**:
+- 方法: `GET`
+- 路径: `/api/getlyric`
+- 参数:
+  - `id`: 歌曲ID（必填）
+  - `source`: 音乐源（可选）
+
+**响应**:
+```json
+{
+  "lyric": "string",
+  "tlyric": "string"
+}
+```
+
+**描述**: 获取指定歌曲的歌词和翻译歌词（如果有）。

@@ -1,0 +1,12 @@
+from app.db.repositories.user import user_repository
+from app.db.repositories.admin import admin_repository
+from app.db.repositories.song_request import song_request_repository
+from app.db.repositories.refresh_token import refresh_token_repository
+
+# 导出所有仓库
+__all__ = [
+    "user_repository",
+    "admin_repository", 
+    "song_request_repository",
+    "refresh_token_repository"
+]

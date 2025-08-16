@@ -1,0 +1,25 @@
+from typing import Optional
+from pydantic import BaseModel
+
+class LoginRequest(BaseModel):
+    code: str
+
+class BindRequest(BaseModel):
+    student_id: str
+    name: str
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+class AdminLoginRequest(BaseModel):
+    username: str
+    password: str
+
+class AdminTokenResponse(BaseModel):
+    token: str
+    username: str
