@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from werkzeug.security import check_password_hash
 
 from app.core.config import settings
-from app.db.repositories import admin_repository, refresh_token_repository
+from app.db.repositories import refresh_token_repository
 
 def create_access_token(openid: str, expiry_hours: int|None = None) -> str:
     """
@@ -113,37 +113,3 @@ def verify_wechat_code(code: str) -> Dict[str, Any]:
         return {"success": True, "openid": wx_data["openid"]}
     except Exception as e:
         return {"success": False, "msg": f"微信登录请求失败: {str(e)}"}
-
-def create_admin_token(admin_id: int, username: str, expiry_hours: int = 8) -> str:
-    """
-    为管理员创建JWT令牌
-    """
-    payload = {
-        "admin_id": admin_id,
-        "username": username,
-        "exp": datetime.datetime.now() + datetime.timedelta(hours=expiry_hours)
-    }
-    token = jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
-    if isinstance(token, bytes):
-        token = token.decode('utf-8')
-    return token
-
-def verify_admin_login(username: str, password: str, db: Session) -> Optional[Dict[str, Any]]:
-    """
-    验证管理员登录凭据
-    """
-    admin = admin_repository.get_by_username(db, username)
-    if not admin:
-        return None
-    
-    if check_password_hash(admin.password_hash, password):# type: ignore
-        token = create_admin_token(admin.id, admin.username)# type: ignore
-        return {"token": token, "username": username}
-    
-    return None
-
-def is_admin_openid(openid: str) -> bool:
-    """
-    检查openid是否在管理员列表中
-    """
-    return openid in settings.ADMIN_OPENIDS or settings.DEVELOP_MODE

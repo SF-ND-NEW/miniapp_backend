@@ -33,7 +33,6 @@ def create_postgres_tables():
 
     # 删除已经创建的表
     cursor.execute("DROP TABLE IF EXISTS users CASCADE")
-    cursor.execute("DROP TABLE IF EXISTS admins CASCADE")
     cursor.execute("DROP TABLE IF EXISTS song_requests CASCADE")
     cursor.execute("DROP TABLE IF EXISTS refresh_tokens CASCADE")
     cursor.execute("DROP TABLE IF EXISTS wall_messages CASCADE")
@@ -53,16 +52,6 @@ def create_postgres_tables():
         )
     """)
     
-    # 创建admins表
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS admins (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(50) UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
     
     # 创建song_requests表
     cursor.execute("""
@@ -189,74 +178,6 @@ def migrate_users():
     
     pg_conn.commit()
     print(f"用户数据迁移完成! 成功迁移: {imported_count}")
-    
-    # 关闭连接
-    sqlite_conn.close()
-    pg_conn.close()
-
-def migrate_admins():
-    """迁移管理员数据"""
-    # 连接SQLite数据库
-    sqlite_conn = sqlite3.connect(SQLITE_DB)
-    sqlite_conn.row_factory = sqlite3.Row
-    sqlite_cursor = sqlite_conn.cursor()
-    
-    # 获取所有管理员
-    sqlite_cursor.execute("SELECT id, username, password_hash FROM admin")
-    admins = sqlite_cursor.fetchall()
-    
-    # 连接PostgreSQL数据库
-    pg_conn = psycopg2.connect(
-        dbname=PG_DB,
-        user=PG_USER,
-        password=PG_PASSWORD,
-        host=PG_HOST,
-        port=PG_PORT
-    )
-    pg_cursor = pg_conn.cursor()
-    
-    # 迁移管理员数据
-    print(f"开始迁移管理员数据，共{len(admins)}条记录...")
-    imported_count = 0
-    
-    for admin in admins:
-        try:
-            # 插入管理员数据
-            pg_cursor.execute("""
-                INSERT INTO admins (id, username, password_hash, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s)
-                ON CONFLICT (id) DO NOTHING
-            """, (
-                admin['id'], 
-                admin['username'], 
-                admin['password_hash'],
-                datetime.datetime.now(),
-                datetime.datetime.now()
-            ))
-            
-            imported_count += 1
-            print(f"迁移管理员: {admin['username']} 成功")
-            
-        except Exception as e:
-            print(f"迁移管理员 {admin['username']} 失败: {str(e)}")
-    
-    # 如果没有管理员，添加默认管理员
-    if imported_count == 0:
-        password_hash = generate_password_hash('XxshSU0081')
-        pg_cursor.execute("""
-            INSERT INTO admins (username, password_hash, created_at, updated_at)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT (username) DO NOTHING
-        """, (
-            'su', 
-            password_hash,
-            datetime.datetime.now(),
-            datetime.datetime.now()
-        ))
-        print("添加默认管理员 'su' 成功")
-    
-    pg_conn.commit()
-    print(f"管理员数据迁移完成! 成功迁移: {imported_count}")
     
     # 关闭连接
     sqlite_conn.close()
@@ -403,7 +324,6 @@ if __name__ == "__main__":
     
     # 迁移数据
     migrate_users()
-    migrate_admins()
     migrate_song_requests()
     migrate_refresh_tokens()
     

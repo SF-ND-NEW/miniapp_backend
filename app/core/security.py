@@ -45,22 +45,6 @@ def require_admin(
     current_user = Depends(get_current_user)
 ):
     """要求管理员权限"""
-    if not current_user.is_admin:
+    if not current_user.is_admin and current_user.wechat_openid not in settings.ADMIN_OPENIDS:
         raise HTTPException(status_code=403, detail="需要管理员权限")
     return current_user
-
-def get_admin_id(authorization: str = Header(...)) -> int:
-    """
-    从JWT令牌中获取admin_id
-    """
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="认证信息缺失或格式错误")
-    
-    token = authorization.split(" ")[1]
-    
-    try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
-    except Exception:
-        raise HTTPException(status_code=401, detail="token无效或已过期")
-    
-    return payload["admin_id"]

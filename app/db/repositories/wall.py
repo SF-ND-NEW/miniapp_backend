@@ -178,6 +178,35 @@ class WallRepository(BaseRepository[WallMessage, WallMessageCreate, WallMessageU
             "pending_count": pending_count,
             "type_statistics": type_stats
         }
+    def count_messages(
+        self,
+        db: Session,
+        message_type: Optional[str] = None,
+        status: Optional[str] = None,
+        keyword: Optional[str] = None,
+        user_id: Optional[int] = None
+    ) -> int:
+        """计算符合条件的消息总数"""
+        query = db.query(self.model)
+        
+        if status:
+            query = query.filter(self.model.status == status)
+        
+        if message_type:
+            query = query.filter(self.model.message_type == message_type)
+        
+        if keyword:
+            search_filter = or_(
+                self.model.title.contains(keyword),
+                self.model.content.contains(keyword),
+                self.model.tags.contains(keyword)
+            )
+            query = query.filter(search_filter)
+        
+        if user_id:
+            query = query.filter(self.model.user_id == user_id)
+        
+        return query.count()
 
 
 wall_repository = WallRepository()

@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends, Body
 from typing import Dict, Any
 from sqlalchemy.orm import Session
-
+from app.core.config import settings
 from app.schemas.auth import LoginRequest, BindRequest, RefreshTokenRequest, TokenResponse
 from app.schemas.song import SongRequest
-from app.services.auth import create_token_pair, verify_wechat_code, verify_refresh_token, is_admin_openid
+from app.services.auth import create_token_pair, verify_wechat_code, verify_refresh_token
 from app.db.repositories import user_repository, song_request_repository
 from app.core.security import get_openid
 from app.db.session import get_db
@@ -176,7 +176,7 @@ def song_request(
         raise HTTPException(status_code=400, detail="未绑定用户")
 
     user_id = user.id
-    is_admin = is_admin_openid(openid)
+    is_admin = user.is_admin or openid in settings.ADMIN_OPENIDS
 
     # 检查用户在最近30分钟内是否已经请求过歌曲
     if not is_admin and song_request_repository.check_recent_song_requests(db, user_id) > 0:  # type: ignore

@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import wechat, admin, songs, player, wall, users
+from app.api import wechat, songs, player, wall
 from app.core.config import settings
 from app.db.session import engine
-from app.db.models import User, Admin, SongRequest, RefreshToken, WallMessage
+from app.db.models import User, SongRequest, RefreshToken, WallMessage
 
 # 创建FastAPI应用实例
 app = FastAPI(title="校园点歌系统API",
@@ -27,11 +27,9 @@ app.add_middleware(
 
 # 注册路由
 app.include_router(wechat.router, prefix=f"{settings.API_V1_STR}/wechat", tags=["微信小程序"])
-app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["管理员"])
 app.include_router(songs.router, prefix=settings.API_V1_STR, tags=["歌曲搜索"])
 app.include_router(player.router, prefix=f"{settings.API_V1_STR}/player", tags=["播放器"])
 app.include_router(wall.router, prefix=f"{settings.API_V1_STR}/wall", tags=["校园墙"])
-app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["用户管理"])
 
 @app.get("/",description="API根路径", summary="API根路径",
          responses={

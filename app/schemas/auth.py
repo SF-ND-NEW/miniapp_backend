@@ -15,11 +15,3 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
-
-class AdminLoginRequest(BaseModel):
-    username: str
-    password: str
-
-class AdminTokenResponse(BaseModel):
-    token: str
-    username: str

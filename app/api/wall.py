@@ -72,12 +72,17 @@ def get_wall_messages(
             limit=page_size
         )
     
-    # 获取总数（简化版本，实际应该根据筛选条件获取）
-    total = len(messages) + skip if len(messages) == page_size else skip + len(messages)
+    total = wall_repository.count_messages(
+        db=db,
+        message_type=message_type,
+        status=status,
+        keyword=keyword,
+        user_id=user_id
+    )
     has_next = len(messages) == page_size
     
     return WallMessageListResponse(
-        items=[WallMessageResponse.from_orm(msg) for msg in messages],
+        items=[WallMessageResponse.model_validate(msg) for msg in messages],
         total=total,
         page=page,
         page_size=page_size,
@@ -101,7 +106,7 @@ def get_popular_messages(
         skip=skip,
         limit=page_size
     )
-    return [WallMessageResponse.from_orm(msg) for msg in messages]
+    return [WallMessageResponse.model_validate(msg) for msg in messages]
 
 
 @router.get("/messages/{message_id}",
@@ -120,7 +125,7 @@ def get_wall_message(
     # 增加浏览次数
     wall_repository.increment_view_count(db=db, message_id=message_id)
     
-    return WallMessageResponse.from_orm(message)
+    return WallMessageResponse.model_validate(message)
 
 
 @router.post("/messages",
@@ -142,7 +147,7 @@ def create_wall_message(
     message_data.user_id = user.id  # type: ignore
     
     message = wall_repository.create(db=db, obj_in=message_data)
-    return WallMessageResponse.from_orm(message)
+    return WallMessageResponse.model_validate(message)
 
 
 @router.put("/messages/{message_id}",
@@ -160,7 +165,7 @@ def update_wall_message(
         raise HTTPException(status_code=404, detail="消息不存在")
     
     updated_message = wall_repository.update(db=db, db_obj=message, obj_in=message_data)
-    return WallMessageResponse.from_orm(updated_message)
+    return WallMessageResponse.model_validate(updated_message)
 
 
 @router.delete("/messages/{message_id}",
@@ -192,7 +197,7 @@ def like_wall_message(
     if not message:
         raise HTTPException(status_code=404, detail="消息不存在")
     
-    return WallMessageResponse.from_orm(message)
+    return WallMessageResponse.model_validate(message)
 
 
 @router.put("/messages/{message_id}/status",
@@ -210,7 +215,7 @@ def update_message_status(
     if not message:
         raise HTTPException(status_code=404, detail="消息不存在")
     
-    return WallMessageResponse.from_orm(message)
+    return WallMessageResponse.model_validate(message)
 
 
 @router.get("/statistics",
@@ -266,7 +271,7 @@ def get_admin_messages(
     has_next = len(messages) == page_size
     
     return WallMessageListResponse(
-        items=[WallMessageResponse.from_orm(msg) for msg in messages],
+        items=[WallMessageResponse.model_validate(msg) for msg in messages],
         total=total,
         page=page,
         page_size=page_size,
