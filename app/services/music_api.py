@@ -63,5 +63,33 @@ class MusicAPIService:
         except Exception as e:
             print(f"Error getting song URL: {e}")
             return {"code": 500, "data": {}}
+    
+    def get_song_detail(self, song_id: str) -> Dict[str, Any]:
+        """根据歌曲ID获取歌曲详细信息"""
+        try:
+            response = requests.get(f"{self.base_url}/song/detail", params={"ids": song_id})
+            data = response.json()
+            
+            if not data or "songs" not in data or not data["songs"]:
+                return {"code": 404, "data": {}}
+            
+            song_info = data["songs"][0]
+            artists = song_info.get("ar", [])
+            artist_names = [artist.get("name", "") for artist in artists]
+            
+            return {
+                "code": 200,
+                "data": {
+                    "id": str(song_info.get("id", "")),
+                    "name": song_info.get("name", ""),
+                    "artists": artist_names,
+                    "album": song_info.get("al", {}).get("name", ""),
+                    "duration": song_info.get("dt", 0),
+                    "cover": song_info.get("al", {}).get("picUrl", "")
+                }
+            }
+        except Exception as e:
+            print(f"Error getting song detail: {e}")
+            return {"code": 500, "data": {}}
 
 music_api_service = MusicAPIService()

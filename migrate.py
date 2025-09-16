@@ -32,10 +32,11 @@ def create_postgres_tables():
     cursor = conn.cursor()
 
     # 删除已经创建的表
-    cursor.execute("DROP TABLE users CASCADE")
-    cursor.execute("DROP TABLE admins CASCADE")
-    cursor.execute("DROP TABLE song_requests CASCADE")
-    cursor.execute("DROP TABLE refresh_tokens CASCADE")
+    cursor.execute("DROP TABLE IF EXISTS users CASCADE")
+    cursor.execute("DROP TABLE IF EXISTS admins CASCADE")
+    cursor.execute("DROP TABLE IF EXISTS song_requests CASCADE")
+    cursor.execute("DROP TABLE IF EXISTS refresh_tokens CASCADE")
+    cursor.execute("DROP TABLE IF EXISTS wall_messages CASCADE")
     conn.commit()
     
     # 创建users表
@@ -46,6 +47,7 @@ def create_postgres_tables():
             student_id VARCHAR(10) UNIQUE NOT NULL,
             name VARCHAR(50) NOT NULL,
             bind_time TIMESTAMP,
+            is_admin BOOLEAN NOT NULL DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -91,8 +93,28 @@ def create_postgres_tables():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(openid, token_id)
         )
-    """
-    )
+    """)
+    
+    # 创建wall_messages表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS wall_messages (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            title VARCHAR(200),
+            content TEXT NOT NULL,
+            message_type VARCHAR(20) NOT NULL CHECK (message_type IN ('general', 'lost_and_found', 'confession', 'help', 'announcement')) DEFAULT 'general',
+            status VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'DELETED')) DEFAULT 'PENDING',
+            contact_info VARCHAR(200),
+            location VARCHAR(200),
+            tags VARCHAR(500),
+            view_count INTEGER NOT NULL DEFAULT 0,
+            like_count INTEGER NOT NULL DEFAULT 0,
+            timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
     
     # 创建索引
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_openid ON users(wechat_openid)")
@@ -101,6 +123,12 @@ def create_postgres_tables():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_song_requests_status ON song_requests(status)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_refresh_tokens_openid ON refresh_tokens(openid)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token_id ON refresh_tokens(token_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_wall_messages_user_id ON wall_messages(user_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_wall_messages_status ON wall_messages(status)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_wall_messages_type ON wall_messages(message_type)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_wall_messages_timestamp ON wall_messages(timestamp)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_wall_messages_like_count ON wall_messages(like_count)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_wall_messages_view_count ON wall_messages(view_count)")
 
     # 提交更改并关闭连接
     conn.commit()

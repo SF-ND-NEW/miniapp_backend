@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship
 from app.db.session import Base
 from app.db.models.base import BaseModel
 
-class SongRequest(Base,BaseModel):
+class SongRequest(BaseModel):
     """歌曲请求模型"""
     __tablename__ = "song_requests"
     

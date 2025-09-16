@@ -3,7 +3,7 @@ from sqlalchemy import Column, String
 from app.db.session import Base
 from app.db.models.base import BaseModel
 
-class Admin(Base, BaseModel):
+class Admin(BaseModel):
     """管理员模型"""
     __tablename__ = "admins"
     

@@ -1,12 +1,28 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Any
 from sqlalchemy.orm import Session
 
-from app.schemas.song import PlayerPlayedRequest
+from app.schemas.song import PlayerPlayedRequest, CurrentSongResponse
 from app.db.repositories import song_request_repository
 from app.db.session import get_db
+from app.core.security import require_admin
 
 router = APIRouter()
+
+@router.get("/current",
+            summary="获取当前播放歌曲",
+            description="获取当前正在播放的歌曲信息和播放状态")
+def get_current_song(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """获取当前播放的歌曲"""
+    current_song_data = song_request_repository.get_current_playing_song(db)
+    
+    is_playing = current_song_data is not None
+    
+    return {
+        "current_song": current_song_data,
+        "is_playing": is_playing,
+        "queue_position": 1 if current_song_data else None
+    }
 
 @router.get("/queue",summary="获取歌曲队列",description="获取已批准的歌曲队列",
             responses={
@@ -17,13 +33,11 @@ router = APIRouter()
                             "example": {
                                 "queue": [
                                     {
-                                        "id": "123456",
-                                        "name": "Example Song",
-                                        "artists": ["Artist Name"],
-                                        "album": "Example Album",
-                                        "duration": 240,
-                                        "cover": "http://example.com/cover.jpg",
-                                        "source": "netease"
+                                        "id": 123,
+                                        "title": "Example Song",
+                                        "artist": "Artist Name",
+                                        "requester_name": "用户名",
+                                        "created_at": "2024-01-01T00:00:00"
                                     }
                                 ]
                             }

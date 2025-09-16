@@ -3,7 +3,7 @@ from sqlalchemy import Column, String, DateTime, ForeignKey, UniqueConstraint
 from app.db.session import Base
 from app.db.models.base import BaseModel
 
-class RefreshToken(Base, BaseModel):
+class RefreshToken(BaseModel):
     """刷新令牌模型"""
     __tablename__ = "refresh_tokens"
     

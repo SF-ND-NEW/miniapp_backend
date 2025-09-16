@@ -25,8 +25,8 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
         """绑定用户的微信openid"""
         user = db.query(User).filter(User.id == user_id).first()
         if user:
-            user.wechat_openid = openid
-            user.bind_time = datetime.now()
+            user.wechat_openid = openid  # type: ignore
+            user.bind_time = datetime.now()  # type: ignore
             db.commit()
             db.refresh(user)
         return user

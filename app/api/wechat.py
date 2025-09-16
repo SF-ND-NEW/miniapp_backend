@@ -90,7 +90,7 @@ def wechat_bind(
         return {"success": True, "msg": "曾经已绑定过"}
 
     # 绑定openid
-    user_repository.bind_user(db, user.id, openid)
+    user_repository.bind_user(db, user.id, openid)  #type: ignore
 
     return {"success": True, "msg": "绑定成功"}
 
@@ -179,19 +179,19 @@ def song_request(
     is_admin = is_admin_openid(openid)
 
     # 检查用户在最近30分钟内是否已经请求过歌曲
-    if not is_admin and song_request_repository.check_recent_song_requests(db, user_id) > 0:
+    if not is_admin and song_request_repository.check_recent_song_requests(db, user_id) > 0:  # type: ignore
         raise HTTPException(status_code=400, detail="30分钟内只能点一次歌，请稍后再试")
 
     # 检查用户是否已经请求过这首歌
-    if song_request_repository.check_song_already_requested(db, user_id, data.song_id):
+    if song_request_repository.check_song_already_requested(db, user_id, data.song_id):  # type: ignore
         raise HTTPException(status_code=400, detail="你或别人已经点过这首歌了")
 
     # 检查用户是否有太多未审核/已批准的歌曲
-    if not is_admin and song_request_repository.count_pending_approved_songs(db, user_id) >= 3:
+    if not is_admin and song_request_repository.count_pending_approved_songs(db, user_id) >= 3:  # type: ignore
         raise HTTPException(status_code=400, detail="你最多只能有3首未审核通过或未播放的歌曲")
 
     # 创建歌曲请求
-    song_request_repository.create_song_request(db, user_id, data.song_id,data.song_name)
+    song_request_repository.create_song_request(db, user_id, data.song_id, data.song_name)  # type: ignore
 
     return {"success": True, "msg": "点歌成功，等待审核"}
 
@@ -211,6 +211,32 @@ def get_all_song_requests_of_user(
     if not user:
         raise HTTPException(status_code=400, detail="未绑定用户")
 
-    requests = song_request_repository.get_requests_by_user_id(db, user.id,status=["pending", "approved", "rejected"])
+    requests = song_request_repository.get_requests_by_user_id(db, user.id,status=["pending", "approved", "rejected"])  # type: ignore
 
     return {"requests": requests}
+
+
+@router.get("/userinfo",
+           summary="获取用户信息",
+           response_model=Dict[str, Any],
+           description="获取当前用户的详细信息"
+           )
+def get_user_info(
+        db: Session = Depends(get_db),
+        openid: str = Depends(get_openid)
+) -> Dict[str, Any]:
+    """
+    获取用户信息
+    """
+    user = user_repository.get_by_openid(db, openid)
+    if not user:
+        raise HTTPException(status_code=400, detail="未绑定用户")
+
+    return {
+        "id": user.id,
+        "name": user.name,
+        "student_id": user.student_id,
+        "wechat_openid": user.wechat_openid,
+        "bind_time": user.bind_time,
+        "is_admin": user.is_admin
+    }

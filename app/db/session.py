@@ -16,7 +16,6 @@ engine = create_engine(
     pool_pre_ping=True,   # 连接前ping一下，确保连接可用
 )
 
-# 创建会话工厂
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # 创建基础模型类

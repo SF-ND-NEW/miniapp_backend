@@ -1,10 +1,10 @@
-from sqlalchemy import Column, String, Integer, DateTime, UniqueConstraint
+from sqlalchemy import Column, String, Integer, DateTime, Boolean
 from sqlalchemy.orm import relationship
 
 from app.db.session import Base
 from app.db.models.base import BaseModel
 
-class User(Base, BaseModel):
+class User(BaseModel):
     """用户模型"""
     __tablename__ = "users"
     
@@ -16,6 +16,8 @@ class User(Base, BaseModel):
     name = Column(String, nullable=False)
     # 绑定时间
     bind_time = Column(DateTime, nullable=True)
+    # 是否为管理员
+    is_admin = Column(Boolean, nullable=False, default=False)
     
     # 关系
     song_requests = relationship("SongRequest", back_populates="user")

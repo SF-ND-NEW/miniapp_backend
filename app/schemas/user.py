@@ -24,3 +24,4 @@ class UserResponse(BaseSchema):
     name: str
     wechat_openid: Optional[str] = None
     bind_time: Optional[datetime] = None
+    is_admin: bool = False
