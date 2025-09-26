@@ -34,6 +34,7 @@ class WallMessage(BaseModel):
     status = Column(String(20), nullable=False, default=MessageStatus.PENDING, comment="消息状态")
     contact_info = Column(String(200), nullable=True, comment="联系方式")
     location = Column(String(200), nullable=True, comment="位置信息")
+    files = Column(String(500), nullable=True, comment="图片文件，多个以逗号分隔")
     tags = Column(String(500), nullable=True, comment="标签(JSON格式)")
     view_count = Column(Integer, nullable=False, default=0, comment="浏览次数")
     like_count = Column(Integer, nullable=False, default=0, comment="点赞次数")

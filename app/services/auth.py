@@ -5,7 +5,6 @@ import uuid
 from typing import Dict, Any, Optional
 
 from sqlalchemy.orm import Session
-from werkzeug.security import check_password_hash
 
 from app.core.config import settings
 from app.db.repositories import refresh_token_repository

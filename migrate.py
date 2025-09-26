@@ -4,7 +4,7 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
-from werkzeug.security import generate_password_hash
+import argparse
 
 # 加载环境变量
 load_dotenv()
@@ -14,12 +14,12 @@ PG_USER = os.getenv("POSTGRES_USER", "postgres")
 PG_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
 PG_HOST = os.getenv("POSTGRES_HOST", "localhost")
 PG_PORT = os.getenv("POSTGRES_PORT", "5432")
-PG_DB = os.getenv("POSTGRES_DB", "songapp")
+PG_DB = os.getenv("POSTGRES_DB", "miniapp")
 
 # SQLite数据库文件
 SQLITE_DB = "database.db"
 
-def create_postgres_tables():
+def create_postgres_tables(delete_existing: bool):
     """创建PostgreSQL数据库表"""
     print(f"连接到PostgreSQL数据库: {PG_DB} at {PG_HOST}:{PG_PORT} as user {PG_USER}")
     conn = psycopg2.connect(
@@ -32,11 +32,13 @@ def create_postgres_tables():
     cursor = conn.cursor()
 
     # 删除已经创建的表
-    cursor.execute("DROP TABLE IF EXISTS users CASCADE")
-    cursor.execute("DROP TABLE IF EXISTS song_requests CASCADE")
-    cursor.execute("DROP TABLE IF EXISTS refresh_tokens CASCADE")
-    cursor.execute("DROP TABLE IF EXISTS wall_messages CASCADE")
-    conn.commit()
+    if delete_existing:
+        cursor.execute("DROP TABLE IF EXISTS users CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS song_requests CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS refresh_tokens CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS wall_messages CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS comments CASCADE")
+        conn.commit()
     
     # 创建users表
     cursor.execute("""
@@ -95,6 +97,7 @@ def create_postgres_tables():
             status VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'DELETED')) DEFAULT 'PENDING',
             contact_info VARCHAR(200),
             location VARCHAR(200),
+            files VARCHAR(500),
             tags VARCHAR(500),
             view_count INTEGER NOT NULL DEFAULT 0,
             like_count INTEGER NOT NULL DEFAULT 0,
@@ -102,6 +105,23 @@ def create_postgres_tables():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+
+    # 创建comments表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS comments (
+            id SERIAL PRIMARY KEY,
+            wall_id INTEGER NOT NULL, 
+            user_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            status VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'DELETED')) DEFAULT 'PENDING',
+            like_count INTEGER NOT NULL DEFAULT 0,
+            timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (wall_id) REFERENCES wall_messages(id)
         )
     """)
     
@@ -118,6 +138,8 @@ def create_postgres_tables():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_wall_messages_timestamp ON wall_messages(timestamp)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_wall_messages_like_count ON wall_messages(like_count)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_wall_messages_view_count ON wall_messages(view_count)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id)");
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_comments_like_count ON comments(like_count)");
 
     # 提交更改并关闭连接
     conn.commit()
@@ -317,10 +339,14 @@ def migrate_refresh_tokens():
     pg_conn.close()
 
 if __name__ == "__main__":
-    print("开始数据库初始化...")
-    
+    argparser = argparse.ArgumentParser(description="数据库迁移脚本")
+    argparser.add_argument('--delete', action='store_true', help='删除现有的PostgreSQL表并重新创建')
+    args = argparser.parse_args()
+    if args.delete:
+        print("删除现有的PostgreSQL表...")
+
     # 创建PostgreSQL数据库表
-    create_postgres_tables()
+    create_postgres_tables(args.delete)
     
     # 迁移数据
     migrate_users()

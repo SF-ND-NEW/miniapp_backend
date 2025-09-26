@@ -43,4 +43,6 @@ class Settings:
         'ojeMl5wp-gpIUw2TJiXZUUfZWPI8'
     ]
 
+    PICTURE_UPLOAD_DIR: str = "static/pictures"
+
 settings = Settings()

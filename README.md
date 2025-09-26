@@ -8,7 +8,7 @@
 - **ORM**: SQLAlchemy
 - **数据库**: PostgreSQL
 - **身份验证**: JWT
-- **API集成**: 网易云音乐API
+- **API集成**: node.js网易云音乐API
 
 ## 项目结构
 
@@ -26,7 +26,6 @@ ourapp_back/
 │   ├── schemas/               # 请求/响应模式
 │   ├── services/              # 业务逻辑服务
 │   └── main.py                # 应用入口
-├── cookie.txt                  # 网易云音乐cookie
 ├── database.db                 # SQLite数据库文件
 ├── requirements.txt            # 依赖包列表
 ├── migrate.py                  # 数据库迁移脚本
@@ -39,12 +38,10 @@ ourapp_back/
 - **登录**: 通过微信小程序code换取openid并生成JWT令牌
 - **绑定**: 将微信用户与学生信息绑定
 - **刷新令牌**: 支持访问令牌过期后使用刷新令牌获取新令牌
-- **点歌**: 用户提交点歌请求
 
-### 管理员模块
-- **登录**: 管理员账号密码登录
-- **歌曲审核**: 查看和审核点歌请求
-- **数据管理**: 管理用户和歌曲数据
+### 点歌模块
+- **点歌**: 用户提交点歌请求
+- **审核**: 审核点歌请求（管理员权限）
 
 ### 播放器模块
 - **队列管理**: 获取待播放歌曲队列
@@ -67,7 +64,18 @@ ourapp_back/
 pip install -r requirements.txt
 ```
 
+or
+
+```bash
+poetry install
+```
+
 ### 3. 配置环境变量
+
+你可以这样创建JWT_SECRET：
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
 
 在项目根目录创建`.env`文件：
 
@@ -81,19 +89,24 @@ WECHAT_SECRET=your_wechat_secret
 
 # 数据库配置（如使用PostgreSQL）
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=yourpassword
+POSTGRES_PASSWORD=postgres
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
-POSTGRES_DB=your-database-name
+POSTGRES_DB=miniapp
 ```
 
-### 4. 初始化数据库
+### 4. 数据库相关
 
 使用以下命令初始化数据库：
 
-```bash
+``` bash
 # 导入初始数据
 python migrate.py
+```
+
+当开发时需要删除数据库原来的数据并重新创建时，可以使用
+``` bash
+python migrate.py --delete
 ```
 
 ### 5. 启动服务
@@ -104,6 +117,10 @@ python run.py
 
 # 或使用uvicorn直接启动
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# 开发时可以使用这种方式启动
+cd app
+fastapi dev main.py
 ```
 
 服务启动后，可访问 http://localhost:8000/docs 查看API文档。

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import wechat, songs, player, wall
+from app.api import wechat, songs, player, wall,comment,resources
 from app.core.config import settings
 from app.db.session import engine
 from app.db.models import User, SongRequest, RefreshToken, WallMessage
@@ -30,6 +30,8 @@ app.include_router(wechat.router, prefix=f"{settings.API_V1_STR}/wechat", tags=[
 app.include_router(songs.router, prefix=settings.API_V1_STR, tags=["歌曲搜索"])
 app.include_router(player.router, prefix=f"{settings.API_V1_STR}/player", tags=["播放器"])
 app.include_router(wall.router, prefix=f"{settings.API_V1_STR}/wall", tags=["校园墙"])
+app.include_router(comment.router, prefix=f"{settings.API_V1_STR}/comment", tags=["评论"])
+app.include_router(resources.router, prefix=f"{settings.API_V1_STR}/resources", tags=["资源管理"])
 
 @app.get("/",description="API根路径", summary="API根路径",
          responses={

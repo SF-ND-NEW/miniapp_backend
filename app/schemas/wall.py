@@ -16,9 +16,9 @@ class WallMessageBase(BaseSchema):
     content: str = Field(..., min_length=1, description="消息内容")
     message_type: MessageType = Field("general", description="消息类型")
     contact_info: Optional[str] = Field(None, max_length=200, description="联系方式")
-    location: Optional[str] = Field(None, max_length=200, description="位置信息")
+    location: Optional[str] = Field(None, max_length=200, description="位置信息")  
     tags: Optional[str] = Field(None, max_length=500, description="标签")
-
+    files: Optional[str] = Field(None, max_length=500, description="图片文件，多个以逗号分隔")
 
 class WallMessageCreate(WallMessageBase):
     """创建墙消息的Schema"""
@@ -34,6 +34,7 @@ class WallMessageUpdate(BaseSchema):
     contact_info: Optional[str] = Field(None, max_length=200, description="联系方式")
     location: Optional[str] = Field(None, max_length=200, description="位置信息")
     tags: Optional[str] = Field(None, max_length=500, description="标签")
+    files: Optional[str] = Field(None, max_length=500, description="图片文件，多个以逗号分隔")
 
 
 class WallMessageResponse(WallMessageBase):

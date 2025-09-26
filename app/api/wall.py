@@ -20,9 +20,7 @@ from app.core.security import get_openid, require_admin
 MessageType = Literal["general", "lost_and_found", "confession", "help", "announcement"]
 MessageStatus = Literal["PENDING", "APPROVED", "REJECTED", "DELETED"]
 
-
-router = APIRouter()
-
+router = APIRouter()    
 
 @router.get("/messages",
             response_model=WallMessageListResponse,
