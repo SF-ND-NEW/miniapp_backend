@@ -1,6 +1,7 @@
 from app.core.config import settings
 import os
-import ulid,time
+import time
+from ulid import ULID
 import base64
 def encrypt_str(data: str) -> str:
     return base64.b64encode(data.encode("utf-8")).decode()
@@ -14,8 +15,8 @@ class ResourcesManager():
 
 
     def register_picture(self,extension:str):
-        timestamp_ulid = ulid.from_timestamp(time.time())
-        return encrypt_str(timestamp_ulid.str + f".{extension}")
+        timestamp_ulid = ULID.from_timestamp(time.time())
+        return encrypt_str(str(timestamp_ulid) + f".{extension}")
      
     def get_extension(self,uid:str):
         decrypted_str = decrypt_str(uid)

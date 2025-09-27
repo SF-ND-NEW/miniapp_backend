@@ -887,6 +887,21 @@ files = [
 ]
 
 [[package]]
+name = "python-ulid"
+version = "3.1.0"
+description = "Universally unique lexicographically sortable identifier"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "python_ulid-3.1.0-py3-none-any.whl", hash = "sha256:e2cdc979c8c877029b4b7a38a6fba3bc4578e4f109a308419ff4d3ccf0a46619"},
+    {file = "python_ulid-3.1.0.tar.gz", hash = "sha256:ff0410a598bc5f6b01b602851a3296ede6f91389f913a5d5f8c496003836f636"},
+]
+
+[package.extras]
+pydantic = ["pydantic (>=2.0)"]
+
+[[package]]
 name = "pyyaml"
 version = "6.0.3"
 description = "YAML parser and emitter for Python"
@@ -1395,17 +1410,6 @@ files = [
 typing-extensions = ">=4.12.0"
 
 [[package]]
-name = "ulid"
-version = "1.1"
-description = "Pyhton version of this: https://github.com/alizain/ulid"
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "ulid-1.1.tar.gz", hash = "sha256:0943e8a751ec10dfcdb4df2758f96dffbbfbc055d0b49288caf2f92125900d49"},
-]
-
-[[package]]
 name = "urllib3"
 version = "2.5.0"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
@@ -1703,4 +1707,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13"
-content-hash = "16ebd8cf5c4bfd7ea64ad894f1fb8cd74630a7b7cbc3f7fe9c3bd75bdef67ab8"
+content-hash = "eabb90aa5baaa367c9631be93a08af6b836a3f2776014ce1325bb9f30de2384e"

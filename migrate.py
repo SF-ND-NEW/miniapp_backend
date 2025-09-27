@@ -353,4 +353,8 @@ if __name__ == "__main__":
     migrate_song_requests()
     migrate_refresh_tokens()
     
+    # 创建必需的静态目录
+    if not os.path.exists("static/pictures"):
+        os.makedirs("static/pictures")
+        print("创建目录: static/pictures")
     print("数据库初始化完成!")

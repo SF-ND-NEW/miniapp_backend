@@ -119,8 +119,7 @@ python run.py
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # 开发时可以使用这种方式启动
-cd app
-fastapi dev main.py
+fastapi dev app/main.py
 ```
 
 服务启动后，可访问 http://localhost:8000/docs 查看API文档。

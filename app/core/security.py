@@ -26,7 +26,8 @@ def get_openid(authorization: str = Header(...), db: Session = Depends(get_db)) 
     except jwt.ExpiredSignatureError:
         # 当令牌过期时，返回特殊的状态码，前端可以捕获并尝试刷新
         raise HTTPException(status_code=401, detail="token已过期，请刷新")
-    except Exception:
+    except Exception as e:
+        print(e)
         raise HTTPException(status_code=401, detail="token无效")
 
 
