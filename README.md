@@ -80,8 +80,8 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 在项目根目录创建`.env`文件：
 
 ``` dotenv
-# JWT配置
-JWT_SECRET=your_secure_jwt_secret_key
+# JWT配置（必须至少32字节，否则启动时会报错）
+JWT_SECRET=your_secure_jwt_secret_key_here_must_be_at_least_32_characters_long
 
 # 微信小程序配置
 WECHAT_APPID=your_wechat_appid

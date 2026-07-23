@@ -24,7 +24,7 @@ MessageStatus = Literal["PENDING", "APPROVED", "REJECTED", "DELETED"]
 router = APIRouter()
 
 
-def _build_wall_message_response(message, author=None) -> WallMessageResponse:
+def _build_wall_message_response(message, author=None, is_like: bool = False) -> WallMessageResponse:
     base = WallMessageResponse.model_validate(message)
     if author is None:
         return base
@@ -34,6 +34,7 @@ def _build_wall_message_response(message, author=None) -> WallMessageResponse:
         "author_nickname": getattr(author, "nickname", None),
         "author_display_name": getattr(author, "nickname", None) or getattr(author, "name", None),
         "author_avatar_url": getattr(author, "avatar_url", None),
+        "is_like": is_like,
     }
     return base.model_copy(update=extra)
 
@@ -64,7 +65,8 @@ def get_wall_messages(
     status: MessageStatus = Query("APPROVED", description="消息状态"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     user_id: Optional[int] = Query(None, description="用户ID"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    openid: str = Depends(get_openid)
 ):
     """获取墙消息列表"""
     skip = (page - 1) * page_size
@@ -119,8 +121,16 @@ def get_wall_messages(
     authors = user_repository.get_by_ids(db, user_ids)
     author_map = _build_author_map(authors)
 
+    # 获取当前用户信息以检查点赞状态
+    current_user = user_repository.get_by_openid(db, openid)
+    current_user_id = current_user.id if current_user else None
+
     response_items = [
-        _build_wall_message_response(msg, _resolve_author(msg, author_map))
+        _build_wall_message_response(
+            msg, 
+            _resolve_author(msg, author_map),
+            is_like=(current_user_id in getattr(msg, "like_users", [])) if current_user_id else False
+        )
         for msg in messages
     ]
 
@@ -140,7 +150,8 @@ def get_wall_messages(
 def get_popular_messages(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    openid: str = Depends(get_openid)
 ):
     """获取热门消息"""
     skip = (page - 1) * page_size
@@ -156,8 +167,17 @@ def get_popular_messages(
             user_ids.append(user_id)
     authors = user_repository.get_by_ids(db, user_ids)
     author_map = _build_author_map(authors)
+    
+    # 获取当前用户信息以检查点赞状态
+    current_user = user_repository.get_by_openid(db, openid)
+    current_user_id = current_user.id if current_user else None
+    
     return [
-        _build_wall_message_response(msg, _resolve_author(msg, author_map))
+        _build_wall_message_response(
+            msg, 
+            _resolve_author(msg, author_map),
+            is_like=(current_user_id in getattr(msg, "like_users", [])) if current_user_id else False
+        )
         for msg in messages
     ]
 
@@ -168,7 +188,8 @@ def get_popular_messages(
             description="获取指定ID的消息详情")
 def get_wall_message(
     message_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    openid: str = Depends(get_openid)
 ):
     """获取单条消息并增加浏览次数"""
     message = wall_repository.get(db=db, id=message_id)
@@ -180,7 +201,18 @@ def get_wall_message(
     
     msg_user_id = getattr(message, "user_id", None)
     author = user_repository.get(db, msg_user_id) if isinstance(msg_user_id, int) else None
-    return _build_wall_message_response(message, author)
+    
+    # 获取当前用户信息以检查点赞状态
+    if message.like_users is None:
+        message.like_users = []
+    user = user_repository.get_by_openid(db, openid)
+    user_id = user.id if user else None
+    print(user_id)
+    return _build_wall_message_response(
+        message, 
+        author,
+        is_like=(user_id in getattr(message, "like_users", [])) if user else False
+    )
 
 
 @router.post("/messages",
@@ -272,13 +304,22 @@ def like_wall_message(
     openid: str = Depends(get_openid)
 ):
     """为消息点赞"""
-    message = wall_repository.increment_like_count(db=db, message_id=message_id)
+    message = wall_repository.get(db=db, id=message_id)
     if not message:
         raise HTTPException(status_code=404, detail="消息不存在")
-    
+    user = user_repository.get_by_openid(db, openid)
+    if not user:
+        raise HTTPException(status_code=400, detail="未绑定用户")
+    # 检查用户是否已点赞
+    #print(user.id)
+    #print(message.like_users)
+    # 如果like_users为空，初始化为空列表
+    if message.like_users is None:
+        message.like_users = []
+    message=wall_repository.change_like_count(db=db, message_id=message_id,count=1,user_id=user.id)
     msg_user_id = getattr(message, "user_id", None)
     author = user_repository.get(db, msg_user_id) if isinstance(msg_user_id, int) else None
-    return _build_wall_message_response(message, author)
+    return _build_wall_message_response(message, author=author, is_like=(user.id in message.like_users)) 
 
 
 @router.put("/messages/{message_id}/status",

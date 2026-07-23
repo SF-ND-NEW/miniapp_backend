@@ -38,6 +38,7 @@ class WallMessage(BaseModel):
     view_count = Column(Integer, nullable=False, default=0, comment="浏览次数")
     like_count = Column(Integer, nullable=False, default=0, comment="点赞次数")
     timestamp = Column(DateTime, nullable=False, default=datetime.now, comment="发布时间")
+    like_users = Column(Integer, nullable=False, comment="点赞用户ID列表")
     
     def __repr__(self):
         return f"<WallMessage {self.id} by User {self.user_id}: {self.title or self.content[:50]}>"

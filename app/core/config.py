@@ -23,6 +23,8 @@ class Settings:
     
     # JWT令牌相关
     JWT_SECRET: str = os.getenv("JWT_SECRET", "your-super-secret-key")
+    if len(JWT_SECRET) < 32:
+        raise ValueError("JWT_SECRET must be at least 32 bytes for HS256 algorithm (RFC 7518 Section 3.2)")
     ACCESS_TOKEN_EXPIRE_HOURS: int = 24
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     RATE_LIMIT_MAX_REQUESTS: int = int(os.getenv("RATE_LIMIT_MAX_REQUESTS", "120"))

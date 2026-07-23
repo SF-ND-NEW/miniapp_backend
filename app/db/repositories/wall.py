@@ -126,13 +126,25 @@ class WallRepository(BaseRepository[WallMessage, WallMessageCreate, WallMessageU
             db.refresh(message)
         return message
     
-    def increment_like_count(self, db: Session, message_id: int) -> Optional[WallMessage]:
-        """增加点赞次数"""
+    def change_like_count(self, db: Session, message_id: int,count: int,user_id: int )-> Optional[WallMessage]:
+        """改变点赞次数"""
         message = self.get(db, message_id)
+        #print("#")
+        #print(message.like_users)
+        if user_id in message.like_users:
+            message.like_users.remove(user_id)
+            count= -1
+            #print(message.like_users)
+        else:
+            message.like_users.append(user_id)
+            count= 1
         if message:
             # 直接更新数据库中的值
             db.query(self.model).filter(self.model.id == message_id).update(
-                {self.model.like_count: self.model.like_count + 1}
+                {self.model.like_count: self.model.like_count + count}
+            )
+            db.query(self.model).filter(self.model.id == message_id).update(
+                {self.model.like_users: message.like_users}
             )
             db.commit()
             db.refresh(message)

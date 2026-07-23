@@ -51,6 +51,7 @@ class WallMessageResponse(WallMessageBase):
     author_nickname: Optional[str] = None
     author_display_name: Optional[str] = None
     author_avatar_url: Optional[str] = None
+    is_like: bool = True
 
 
 class WallMessageListResponse(BaseSchema):

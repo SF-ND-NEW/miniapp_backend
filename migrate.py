@@ -105,7 +105,8 @@ def create_postgres_tables(delete_existing: bool):
             timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id)
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            like_users INTEGER[]
         )
     """)
 
@@ -122,7 +123,8 @@ def create_postgres_tables(delete_existing: bool):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (wall_id) REFERENCES wall_messages(id)
+            FOREIGN KEY (wall_id) REFERENCES wall_messages(id),
+            like_users INTEGER[]
         )
     """)
 
@@ -202,7 +204,7 @@ def migrate_users(sqlite_db:str = "student.db"):
             """, (
                 user['id'], 
                 user['name'], 
-                user['name']=='郑光朔',
+                user['name']=='孙启超',
                 datetime.datetime.now(),
                 datetime.datetime.now()
             ))

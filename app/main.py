@@ -3,7 +3,11 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from app.api import wechat, songs, player, wall, comment, resources, grade, admin
 from app.core.config import settings
+from app.core.init_db import init_database
 from app.middleware.security import RateLimitMiddleware, SecurityHeadersMiddleware, SQLInjectionMiddleware
+
+# 初始化数据库（首次运行自动创建数据库和表）
+init_database()
 
 # 创建FastAPI应用实例
 app = FastAPI(title="校园点歌系统API",
